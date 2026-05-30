@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 import {
   LineChart,
@@ -10,7 +11,7 @@ import {
   Cell,
   XAxis,
   YAxis,
- CartesianGrid,
+  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Legend,
@@ -19,52 +20,79 @@ import {
 import "./App.css";
 
 function App() {
-  // LOGIN STATES
+
+  // LOGIN
   const [userType, setUserType] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
 
-  // SEARCH STATE
+  // NAVIGATION
+  const [activeSection, setActiveSection] =
+    useState("Dashboard");
+
+  // SEARCH
   const [search, setSearch] = useState("");
 
-  // CATEGORY
+  // FORM
   const [category, setCategory] = useState("");
-
-  // DRUG FORM
   const [drugName, setDrugName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [message, setMessage] = useState("");
 
-  // INVENTORY
-  const [inventory, setInventory] = useState({
-    Antibiotics: {
-      amoxicillin: 120,
-      azithromycin: 80,
-      ciprofloxacin: 65,
-    },
+  // CLOCK
+  const [time, setTime] = useState(new Date());
 
-    Painkillers: {
-      paracetamol: 100,
-      dolo: 50,
-      ibuprofen: 70,
-    },
+  // NOTIFICATIONS
+  const [notifications, setNotifications] =
+    useState([]);
 
-    Diabetes: {
-      insulin: 30,
-      metformin: 60,
-    },
+  // HOSPITALS
+  const hospitals = [
+    "City Hospital",
+    "Apollo Hospital",
+    "Medanta",
+    "AIIMS",
+    "Fortis",
+  ];
 
-    Vitamins: {
-      vitaminC: 90,
-      vitaminD: 40,
-    },
+  // INVENTORY FROM DATABASE
+  const [inventory, setInventory] = useState([]);
 
-    Cardiology: {
-      aspirin: 55,
-      atorvastatin: 45,
-    },
-  });
+  // FETCH INVENTORY
+  const fetchInventory = async () => {
 
-  // SHIPMENT DATA
+    try {
+
+      const response = await axios.get(
+        "http://localhost:5000/inventory"
+      );
+
+      setInventory(response.data);
+
+    } catch (error) {
+
+      console.log(
+        "Error fetching inventory",
+        error
+      );
+    }
+  };
+
+  // CLOCK + DATABASE FETCH
+  useEffect(() => {
+
+    fetchInventory();
+
+    const timer = setInterval(() => {
+
+      setTime(new Date());
+
+    }, 1000);
+
+    return () => clearInterval(timer);
+
+  }, []);
+
+  // SHIPMENTS
   const [shipmentStatus] = useState([
     {
       orderId: "ORD101",
@@ -88,72 +116,192 @@ function App() {
     },
   ]);
 
-  // ANALYTICS DATA
+  // ANALYTICS
   const analyticsData = [
-    { month: "Jan", consumption: 400 },
-    { month: "Feb", consumption: 650 },
-    { month: "Mar", consumption: 500 },
-    { month: "Apr", consumption: 900 },
-    { month: "May", consumption: 1200 },
+    {
+      medicine: "Paracetamol",
+      consumption: 6800,
+    },
+
+    {
+      medicine: "Metformin",
+      consumption: 5200,
+    },
+
+    {
+      medicine: "Amoxicillin",
+      consumption: 4300,
+    },
+
+    {
+      medicine: "Insulin",
+      consumption: 3900,
+    },
+
+    {
+      medicine: "Ibuprofen",
+      consumption: 3200,
+    },
   ];
 
   // AI PREDICTION
   const aiPredictionData = [
-    { month: "Jun", demand: 1300 },
-    { month: "Jul", demand: 1500 },
-    { month: "Aug", demand: 1700 },
-    { month: "Sep", demand: 2000 },
+    {
+      medicine: "Paracetamol",
+      predictedDemand: 8500,
+    },
+
+    {
+      medicine: "Insulin",
+      predictedDemand: 7200,
+    },
+
+    {
+      medicine: "Amoxicillin",
+      predictedDemand: 6700,
+    },
+
+    {
+      medicine: "Metformin",
+      predictedDemand: 6100,
+    },
+
+    {
+      medicine: "Azithromycin",
+      predictedDemand: 5400,
+    },
   ];
 
-  // PIE CHART DATA
+  // PIE DATA
   const pieData = [
     { name: "Available", value: 80 },
     { name: "Low Stock", value: 20 },
   ];
 
-  // LOGIN FUNCTION
+  // VENDORS
+  const vendors = [
+    {
+      name: "Sun Pharma",
+      supply: "Paracetamol",
+      status: "Active",
+    },
+
+    {
+      name: "Cipla",
+      supply: "Insulin",
+      status: "Active",
+    },
+
+    {
+      name: "Dr Reddy",
+      supply: "Antibiotics",
+      status: "Pending",
+    },
+  ];
+
+  // ALERTS
+  const alerts = [
+    "⚠️ Insulin stock below threshold",
+    "⚠️ High demand predicted for Paracetamol",
+    "⚠️ Shipment delay for Amoxicillin",
+  ];
+
+  // LOGIN
   const handleLogin = (type) => {
+
     setUserType(type);
     setLoggedIn(true);
+
+    setNotifications((prev) => [
+      ...prev,
+      `✅ ${type} logged in successfully`,
+    ]);
   };
 
   // LOGOUT
   const handleLogout = () => {
+
     setLoggedIn(false);
     setUserType("");
+    setMessage("");
   };
 
-  // REQUEST FUNCTION
-  const handleRequest = () => {
-    const qty = parseInt(quantity);
-    const drug = drugName.toLowerCase();
+  // REQUEST DRUG
+  const handleRequest = async () => {
 
-    if (!category || !drug || !qty) {
-      setMessage("Please enter complete details");
+    const qty = parseInt(quantity);
+
+    if (!category || !drugName || !qty) {
+
+      setMessage(
+        "❌ Please enter complete details"
+      );
+
       return;
     }
 
-    const categoryDrugs = inventory[category];
+    try {
 
-    if (categoryDrugs[drug] && categoryDrugs[drug] >= qty) {
-      setInventory({
-        ...inventory,
+      const response = await axios.post(
+        "http://localhost:5000/request-drug",
+        {
+          category,
+          drug_name: drugName,
+          quantity: qty,
+        }
+      );
 
-        [category]: {
-          ...categoryDrugs,
-          [drug]: categoryDrugs[drug] - qty,
-        },
-      });
+      setMessage(response.data.message);
 
-      setMessage(`✅ ${qty} ${drug} dispatched successfully`);
-    } else {
-      setMessage(`❌ Stock unavailable for ${drug}`);
+      setNotifications((prev) => [
+        ...prev,
+        `🚚 ${drugName} dispatched successfully`,
+      ]);
+
+      fetchInventory();
+
+      setDrugName("");
+      setQuantity("");
+
+    } catch (error) {
+
+      setMessage(
+        "❌ Stock unavailable or server error"
+      );
+
+      setNotifications((prev) => [
+        ...prev,
+        `⚠️ Low stock alert for ${drugName}`,
+      ]);
     }
   };
 
+  // TOTAL STOCK
+  const totalStock = inventory.reduce(
+    (total, item) =>
+      total + item.quantity,
+    0
+  );
+
+  // LOW STOCK
+  const lowStock = inventory.filter(
+    (item) => item.quantity < 40
+  ).length;
+
+  // UNIQUE CATEGORIES
+  const totalCategories = [
+    ...new Set(
+      inventory.map(
+        (item) => item.category
+      )
+    ),
+  ];
+
   // LOGIN PAGE
   if (!loggedIn) {
+
     return (
+
       <div className="login-container">
 
         <div className="login-box">
@@ -162,364 +310,697 @@ function App() {
 
           <h2>Select Login Type</h2>
 
-          <button onClick={() => handleLogin("Admin")}>
+          <button
+            onClick={() =>
+              handleLogin("Admin")
+            }
+          >
             Admin Login
           </button>
 
-          <button onClick={() => handleLogin("Hospital")}>
+          <button
+            onClick={() =>
+              handleLogin("Hospital")
+            }
+          >
             Hospital Login
           </button>
 
-          <button onClick={() => handleLogin("Supplier")}>
+          <button
+            onClick={() =>
+              handleLogin("Supplier")
+            }
+          >
             Supplier Login
           </button>
 
-          <button onClick={() => handleLogin("Warehouse")}>
+          <button
+            onClick={() =>
+              handleLogin("Warehouse")
+            }
+          >
             Warehouse Login
           </button>
 
         </div>
+
       </div>
     );
   }
 
   return (
-    <div className="dashboard">
 
-      {/* NAVBAR */}
+    <div className="app-layout">
 
-      <div className="navbar">
+      {/* SIDEBAR */}
 
-        <h2>💊 Drug Inventory Dashboard</h2>
+      <div className="sidebar">
 
-        <div>
-          <span className="role">
-            Logged in as: {userType}
-          </span>
+        <h2 className="logo">
+          💊 DISTSS
+        </h2>
+
+        <div className="menu">
 
           <button
-            className="logout-btn"
-            onClick={handleLogout}
+            className={
+              activeSection === "Dashboard"
+                ? "active"
+                : ""
+            }
+
+            onClick={() =>
+              setActiveSection("Dashboard")
+            }
           >
-            Logout
+            📊 Dashboard
           </button>
-        </div>
 
-      </div>
-
-      {/* DASHBOARD CARDS */}
-
-      <div className="cards">
-
-        <div className="card total-drugs-card">
-          <h3>Total Categories</h3>
-          <p>{Object.keys(inventory).length}</p>
-        </div>
-
-        <div className="card total-stock-card">
-          <h3>Total Stock</h3>
-
-          <p>
-            {
-              Object.values(inventory)
-                .flatMap((category) =>
-                  Object.values(category)
-                )
-                .reduce((a, b) => a + b, 0)
+          <button
+            className={
+              activeSection === "Inventory"
+                ? "active"
+                : ""
             }
-          </p>
-        </div>
 
-        <div className="card low-stock-card">
-          <h3>Low Stock Alerts</h3>
-
-          <p>
-            {
-              Object.values(inventory)
-                .flatMap((category) =>
-                  Object.values(category)
-                )
-                .filter((qty) => qty < 40).length
-            }
-          </p>
-        </div>
-
-        <div className="card">
-          <h3>Monthly Orders</h3>
-          <p>245</p>
-        </div>
-
-      </div>
-
-      {/* REQUEST BOX */}
-
-      {userType === "Hospital" && (
-
-        <div className="request-box">
-
-          <h2>Request Drugs</h2>
-
-          <select
-            value={category}
-            onChange={(e) =>
-              setCategory(e.target.value)
+            onClick={() =>
+              setActiveSection("Inventory")
             }
           >
-            <option value="">Select Category</option>
+            📦 Inventory
+          </button>
 
-            {Object.keys(inventory).map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-
-          <input
-            type="text"
-            placeholder="Enter Drug Name"
-            value={drugName}
-            onChange={(e) =>
-              setDrugName(e.target.value)
+          <button
+            className={
+              activeSection === "Vendors"
+                ? "active"
+                : ""
             }
-          />
 
-          <input
-            type="number"
-            placeholder="Enter Quantity"
-            value={quantity}
-            onChange={(e) =>
-              setQuantity(e.target.value)
+            onClick={() =>
+              setActiveSection("Vendors")
             }
-          />
+          >
+            🏭 Vendors
+          </button>
 
-          <button onClick={handleRequest}>
-            Request Drug
+          <button
+            className={
+              activeSection === "Alerts"
+                ? "active"
+                : ""
+            }
+
+            onClick={() =>
+              setActiveSection("Alerts")
+            }
+          >
+            🚨 Alerts
+          </button>
+
+          <button
+            className={
+              activeSection === "Consumption"
+                ? "active"
+                : ""
+            }
+
+            onClick={() =>
+              setActiveSection("Consumption")
+            }
+          >
+            📈 Consumption
           </button>
 
         </div>
-      )}
-
-      {/* SEARCH */}
-
-      <div className="search-box">
-
-        <input
-          type="text"
-          placeholder="Search Drug..."
-          className="search-bar"
-          value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
-        />
 
       </div>
 
-      {/* INVENTORY TABLE */}
+      {/* MAIN */}
 
-      <div className="inventory-box">
+      <div className="dashboard">
 
-        <h2>📦 Inventory Status</h2>
+        {/* NAVBAR */}
 
-        <table>
+        <div className="navbar">
 
-          <thead>
-            <tr>
-              <th>Category</th>
-              <th>Drug</th>
-              <th>Quantity</th>
-              <th>Status</th>
-            </tr>
-          </thead>
+          <div className="navbar-left">
 
-          <tbody>
+            <h2>
+              💊 Drug Inventory Dashboard
+            </h2>
 
-            {Object.keys(inventory).map(
-              (categoryName) =>
-                Object.keys(inventory[categoryName])
+            <p className="live">
+              🟢 Live :
+              {time.toLocaleTimeString()}
+            </p>
 
-                  .filter((drug) =>
-                    drug
+          </div>
+
+          <div className="navbar-right">
+
+            <span className="role">
+              {userType}
+            </span>
+
+            <button
+              className="logout-btn"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+
+          </div>
+
+        </div>
+
+        {/* DASHBOARD */}
+
+        {activeSection === "Dashboard" && (
+
+          <>
+
+            <div className="cards">
+
+              <div className="card blue-card">
+                <h3>Total Categories</h3>
+                <p>{totalCategories.length}</p>
+              </div>
+
+              <div className="card green-card">
+                <h3>Total Stock</h3>
+                <p>{totalStock}</p>
+              </div>
+
+              <div className="card red-card">
+                <h3>Low Stock Alerts</h3>
+                <p>{lowStock}</p>
+              </div>
+
+              <div className="card purple-card">
+                <h3>Hospitals</h3>
+                <p>{hospitals.length}</p>
+              </div>
+
+            </div>
+
+            {/* ALERTS */}
+
+            <div className="alert-box">
+
+              <h2>
+                🚨 Critical Stock Alerts
+              </h2>
+
+              {alerts.map(
+                (alert, index) => (
+
+                  <p key={index}>
+                    {alert}
+                  </p>
+                )
+              )}
+
+            </div>
+
+            {/* ANALYTICS */}
+
+            <div className="analytics-section">
+
+              <div className="chart-box">
+
+                <h2>
+                  📊 Most Consumed Medicines
+                </h2>
+
+                <ResponsiveContainer
+                  width="100%"
+                  height={300}
+                >
+
+                  <BarChart
+                    data={analyticsData}
+                  >
+
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                    />
+
+                    <XAxis
+                      dataKey="medicine"
+                    />
+
+                    <YAxis />
+
+                    <Tooltip />
+
+                    <Legend />
+
+                    <Bar
+                      dataKey="consumption"
+                      fill="#3498db"
+                    />
+
+                  </BarChart>
+
+                </ResponsiveContainer>
+
+              </div>
+
+              <div className="chart-box ai-chart">
+
+                <h2>
+                  🤖 AI Demand Prediction
+                </h2>
+
+                <ResponsiveContainer
+                  width="100%"
+                  height={300}
+                >
+
+                  <LineChart
+                    data={aiPredictionData}
+                  >
+
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                    />
+
+                    <XAxis
+                      dataKey="medicine"
+                    />
+
+                    <YAxis />
+
+                    <Tooltip />
+
+                    <Legend />
+
+                    <Line
+                      type="monotone"
+                      dataKey="predictedDemand"
+                      stroke="#e74c3c"
+                      strokeWidth={3}
+                    />
+
+                  </LineChart>
+
+                </ResponsiveContainer>
+
+              </div>
+
+            </div>
+
+            {/* PIE */}
+
+            <div className="chart-box">
+
+              <h2>
+                📈 Stock Distribution
+              </h2>
+
+              <ResponsiveContainer
+                width="100%"
+                height={300}
+              >
+
+                <PieChart>
+
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    outerRadius={100}
+                    label
+                  >
+
+                    <Cell fill="#2ecc71" />
+
+                    <Cell fill="#e74c3c" />
+
+                  </Pie>
+
+                  <Tooltip />
+
+                </PieChart>
+
+              </ResponsiveContainer>
+
+            </div>
+
+          </>
+        )}
+
+        {/* INVENTORY */}
+
+        {activeSection === "Inventory" && (
+
+          <div className="inventory-box">
+
+            <h2>
+              📦 Inventory Status
+            </h2>
+
+            <input
+              type="text"
+              placeholder="Search Drug..."
+              className="search-bar"
+              value={search}
+              onChange={(e) =>
+                setSearch(e.target.value)
+              }
+            />
+
+            <table>
+
+              <thead>
+
+                <tr>
+                  <th>Category</th>
+                  <th>Drug</th>
+                  <th>Quantity</th>
+                  <th>Status</th>
+                </tr>
+
+              </thead>
+
+              <tbody>
+
+                {inventory
+
+                  .filter((item) =>
+                    item.drug_name
                       .toLowerCase()
-                      .includes(search.toLowerCase())
+                      .includes(
+                        search.toLowerCase()
+                      )
                   )
 
-                  .map((drug) => (
+                  .map((item) => (
 
-                    <tr key={drug}>
+                    <tr key={item.id}>
 
-                      <td>{categoryName}</td>
+                      <td>{item.category}</td>
 
-                      <td>{drug}</td>
+                      <td>{item.drug_name}</td>
 
-                      <td>
-                        {inventory[categoryName][drug]}
-                      </td>
+                      <td>{item.quantity}</td>
 
                       <td>
-                        {inventory[categoryName][drug] <
-                        40 ? (
+
+                        {item.quantity < 40 ? (
+
                           <span className="low">
                             Low Stock
                           </span>
+
                         ) : (
+
                           <span className="good">
                             Available
                           </span>
                         )}
+
                       </td>
 
                     </tr>
-                  ))
+                  ))}
+
+              </tbody>
+
+            </table>
+
+          </div>
+        )}
+
+        {/* VENDORS */}
+
+        {activeSection === "Vendors" && (
+
+          <div className="shipment-box">
+
+            <h2>
+              🏭 Vendor Management
+            </h2>
+
+            <table>
+
+              <thead>
+
+                <tr>
+                  <th>Vendor</th>
+                  <th>Supply</th>
+                  <th>Status</th>
+                </tr>
+
+              </thead>
+
+              <tbody>
+
+                {vendors.map(
+                  (vendor, index) => (
+
+                    <tr key={index}>
+
+                      <td>
+                        {vendor.name}
+                      </td>
+
+                      <td>
+                        {vendor.supply}
+                      </td>
+
+                      <td>
+                        {vendor.status}
+                      </td>
+
+                    </tr>
+                  )
+                )}
+
+              </tbody>
+
+            </table>
+
+          </div>
+        )}
+
+        {/* ALERTS */}
+
+        {activeSection === "Alerts" && (
+
+          <div className="notification-box">
+
+            <h2>
+              🔔 Notifications & Alerts
+            </h2>
+
+            {notifications.length === 0 ? (
+
+              <p>No notifications yet.</p>
+
+            ) : (
+
+              notifications.map(
+                (note, index) => (
+
+                  <div
+                    key={index}
+                    className="notification"
+                  >
+                    {note}
+                  </div>
+                )
+              )
             )}
 
-          </tbody>
+          </div>
+        )}
 
-        </table>
+        {/* CONSUMPTION */}
 
-      </div>
+        {activeSection === "Consumption" && (
 
-      {/* ANALYTICS */}
+          <div className="shipment-box">
 
-      <div className="analytics-section">
+            <h2>
+              🏥 Multi Hospital Management
+            </h2>
 
-        {/* BAR GRAPH */}
+            <table>
 
-        <div className="chart-box">
+              <thead>
 
-          <h2>📊 Monthly Consumption</h2>
+                <tr>
+                  <th>Hospital</th>
+                  <th>Status</th>
+                </tr>
 
-          <ResponsiveContainer width="100%" height={300}>
+              </thead>
 
-            <BarChart data={analyticsData}>
+              <tbody>
 
-              <CartesianGrid strokeDasharray="3 3" />
+                {hospitals.map(
+                  (hospital, index) => (
 
-              <XAxis dataKey="month" />
+                    <tr key={index}>
 
-              <YAxis />
+                      <td>
+                        {hospital}
+                      </td>
 
-              <Tooltip />
+                      <td>
+                        Connected
+                      </td>
 
-              <Legend />
+                    </tr>
+                  )
+                )}
 
-              <Bar
-                dataKey="consumption"
-                fill="#3498db"
-              />
+              </tbody>
 
-            </BarChart>
+            </table>
 
-          </ResponsiveContainer>
+          </div>
+        )}
 
-        </div>
+        {/* REQUEST */}
 
-        {/* AI GRAPH */}
+        {userType === "Hospital" && (
 
-        <div className="chart-box">
+          <div className="request-box">
 
-          <h2>🤖 AI Demand Prediction</h2>
+            <h2>
+              💊 Request Drugs
+            </h2>
 
-          <ResponsiveContainer width="100%" height={300}>
-
-            <LineChart data={aiPredictionData}>
-
-              <CartesianGrid strokeDasharray="3 3" />
-
-              <XAxis dataKey="month" />
-
-              <YAxis />
-
-              <Tooltip />
-
-              <Legend />
-
-              <Line
-                type="monotone"
-                dataKey="demand"
-                stroke="#e74c3c"
-                strokeWidth={3}
-              />
-
-            </LineChart>
-
-          </ResponsiveContainer>
-
-        </div>
-
-      </div>
-
-      {/* PIE CHART */}
-
-      <div className="chart-box">
-
-        <h2>📈 Stock Distribution</h2>
-
-        <ResponsiveContainer width="100%" height={300}>
-
-          <PieChart>
-
-            <Pie
-              data={pieData}
-              dataKey="value"
-              outerRadius={100}
-              label
+            <select
+              value={category}
+              onChange={(e) =>
+                setCategory(
+                  e.target.value
+                )
+              }
             >
-              <Cell fill="#2ecc71" />
-              <Cell fill="#e74c3c" />
-            </Pie>
 
-            <Tooltip />
+              <option value="">
+                Select Category
+              </option>
 
-          </PieChart>
+              {totalCategories.map((cat) => (
 
-        </ResponsiveContainer>
+                <option
+                  key={cat}
+                  value={cat}
+                >
+                  {cat}
+                </option>
+              ))}
 
-      </div>
+            </select>
 
-      {/* SHIPMENT TRACKING */}
+            <input
+              type="text"
+              placeholder="Drug Name"
+              value={drugName}
+              onChange={(e) =>
+                setDrugName(
+                  e.target.value
+                )
+              }
+            />
 
-      <div className="shipment-box">
+            <input
+              type="number"
+              placeholder="Quantity"
+              value={quantity}
+              onChange={(e) =>
+                setQuantity(
+                  e.target.value
+                )
+              }
+            />
 
-        <h2>🚚 Shipment Tracking</h2>
+            <button
+              onClick={handleRequest}
+            >
+              Request Drug
+            </button>
 
-        <table>
+          </div>
+        )}
 
-          <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Drug</th>
-              <th>Status</th>
-              <th>Location</th>
-            </tr>
-          </thead>
+        {/* SHIPMENT */}
 
-          <tbody>
+        <div className="shipment-box">
 
-            {shipmentStatus.map((shipment) => (
+          <h2>
+            🚚 Shipment Tracking
+          </h2>
 
-              <tr key={shipment.orderId}>
+          <table>
 
-                <td>{shipment.orderId}</td>
+            <thead>
 
-                <td>{shipment.drug}</td>
-
-                <td>{shipment.status}</td>
-
-                <td>{shipment.location}</td>
-
+              <tr>
+                <th>Order ID</th>
+                <th>Drug</th>
+                <th>Status</th>
+                <th>Location</th>
               </tr>
-            ))}
 
-          </tbody>
+            </thead>
 
-        </table>
+            <tbody>
+
+              {shipmentStatus.map(
+                (shipment) => (
+
+                  <tr
+                    key={shipment.orderId}
+                  >
+
+                    <td>
+                      {
+                        shipment.orderId
+                      }
+                    </td>
+
+                    <td>
+                      {shipment.drug}
+                    </td>
+
+                    <td>
+                      {
+                        shipment.status
+                      }
+                    </td>
+
+                    <td>
+                      {
+                        shipment.location
+                      }
+                    </td>
+
+                  </tr>
+                )
+              )}
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+        {/* MESSAGE */}
+
+        {message && (
+
+          <h2 className="message">
+            {message}
+          </h2>
+        )}
 
       </div>
-
-      {/* MESSAGE */}
-
-      <h2 className="message">{message}</h2>
 
     </div>
   );
